@@ -29,7 +29,13 @@ go mod tidy
 go run main.go
 ```
 
-4. Press Q to quit.
+4. Alternatively, if you prefer to install it globally:
+```
+go install github.com/krisfur/go-resource-monitor@v0.1.0
+go-resource-monitor
+```
+
+5. Press Q to quit.
 
 ## Dependencies:
 - tview (https://github.com/rivo/tview)
