@@ -31,7 +31,7 @@ go run main.go
 
 4. Alternatively, if you prefer to install it globally:
 ```
-go install github.com/krisfur/go-resource-monitor@v0.1.0
+go install github.com/krisfur/go-resource-monitor@v0.1.2
 go-resource-monitor
 ```
 
