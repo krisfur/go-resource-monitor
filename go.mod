@@ -1,11 +1,10 @@
-module github.com/krisfur/go-resource-monitor.git
+module github.com/krisfur/go-resource-monitor
 
 go 1.24.3
 
 require (
 	github.com/distatus/battery v0.11.0
 	github.com/gdamore/tcell/v2 v2.8.1
-	github.com/krisfur/go-resource-monitor v0.0.0-00010101000000-000000000000
 	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
 	github.com/shirou/gopsutil/v3 v3.24.5
 )
