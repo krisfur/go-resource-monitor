@@ -15,14 +15,13 @@ A lightweight resource monitor dashboard written in Go using TUI.
 ## Usage:
 1. Install package globally
 ```
-go install github.com/krisfur/go-resource-monitor@v0.1.2
+go install github.com/krisfur/go-resource-monitor@v0.1.3
 ```
 2. Run it
 ```
 go-resource-monitor
 ```
-
-2. Press Q to quit.
+3. Press Q to quit.
 
 ## Dependencies:
 - tview (https://github.com/rivo/tview)
