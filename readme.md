@@ -13,29 +13,16 @@ A lightweight resource monitor dashboard written in Go using TUI.
 ![screencast](screencast.gif)
 
 ## Usage:
-1. Clone the repository:
-```
-git clone https://github.com/yourusername/go-resource-monitor.git
-cd go-resource-monitor
-```
-
-2. Download dependencies:
-```
-go mod tidy
-```
-
-3. Run the dashboard:
-```
-go run main.go
-```
-
-4. Alternatively, if you prefer to install it globally:
+1. Install package globally
 ```
 go install github.com/krisfur/go-resource-monitor@v0.1.2
+```
+2. Run it
+```
 go-resource-monitor
 ```
 
-5. Press Q to quit.
+2. Press Q to quit.
 
 ## Dependencies:
 - tview (https://github.com/rivo/tview)
