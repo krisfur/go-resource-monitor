@@ -1,5 +1,7 @@
 # 📈 GO Resource Monitor
 
+![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)    [![Go](https://img.shields.io/badge/Go-1.24.4-blue)](https://go.dev/)
+
 A lightweight resource monitor dashboard written in Go using TUI.
 
 ## Features:
