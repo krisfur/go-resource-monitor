@@ -25,6 +25,12 @@ go-resource-monitor
 ```
 3. Press Q to quit.
 
+
+If you need to add go modules to path do:
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
 ## Dependencies:
 - tview (https://github.com/rivo/tview)
 - tcell (https://github.com/gdamore/tcell)
