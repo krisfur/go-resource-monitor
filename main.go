@@ -6,6 +6,9 @@ import (
 )
 
 func main() {
+	// Debug: Print available temperature sensors
+	//metrics.DebugSensors()
+
 	metricsChan := make(chan metrics.Metrics)
 	quitChan := make(chan struct{})
 

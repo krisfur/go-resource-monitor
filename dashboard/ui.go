@@ -222,7 +222,7 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 
 			cpuTempStr := "N/A"
 			if metric.CPUTemp > 0 {
-				cpuTempStr = fmt.Sprintf("%.2f°C", metric.CPUTemp)
+				cpuTempStr = fmt.Sprintf("%.0f°C", metric.CPUTemp)
 			}
 
 			text := fmt.Sprintf(
