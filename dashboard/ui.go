@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 	"time"
@@ -20,12 +19,14 @@ const (
 )
 
 var (
-	cpuHistory     []float64
-	memHistory     []float64
-	diskHistory    []float64
-	netSentHistory []float64
-	netRecvHistory []float64
-	mu             sync.Mutex
+	cpuHistory       []float64
+	memHistory       []float64
+	diskHistory      []float64
+	netSentHistory   []float64
+	netRecvHistory   []float64
+	diskReadHistory  []float64
+	diskWriteHistory []float64
+	mu               sync.Mutex
 )
 
 var gopherFrames = [][]string{
@@ -111,32 +112,6 @@ func normalizeHistory(history []float64) []float64 {
 	return normalized
 }
 
-func getLocalIP() string {
-	interfaces, _ := net.Interfaces()
-	for _, iface := range interfaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		addrs, _ := iface.Addrs()
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-			if ip.To4() != nil {
-				return ip.String()
-			}
-		}
-	}
-	return "N/A"
-}
-
 func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 	app := tview.NewApplication()
 
@@ -162,14 +137,27 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 	sysInfoBox.SetBorder(true)
 	sysInfoBox.SetTitle("System Info")
 
-	// Metrics Box
-	metricsBox := tview.NewTextView()
-	metricsBox.SetDynamicColors(true)
-	metricsBox.SetBorder(true)
-	metricsBox.SetTitle("Metrics")
-	metricsBox.SetChangedFunc(func() {
+	// Metrics Box - Left Column
+	metricsBoxLeft := tview.NewTextView()
+	metricsBoxLeft.SetDynamicColors(true)
+	metricsBoxLeft.SetBorder(true)
+	metricsBoxLeft.SetTitle("System Metrics")
+	metricsBoxLeft.SetChangedFunc(func() {
 		app.Draw()
 	})
+	metricsBoxLeft.SetTextAlign(tview.AlignCenter)
+	metricsBoxLeft.SetText("Loading...")
+
+	// Metrics Box - Right Column
+	metricsBoxRight := tview.NewTextView()
+	metricsBoxRight.SetDynamicColors(true)
+	metricsBoxRight.SetBorder(true)
+	metricsBoxRight.SetTitle("Network & I/O")
+	metricsBoxRight.SetChangedFunc(func() {
+		app.Draw()
+	})
+	metricsBoxRight.SetTextAlign(tview.AlignCenter)
+	metricsBoxRight.SetText("Loading...")
 
 	// Footer Box
 	footerBox := tview.NewTextView()
@@ -181,23 +169,26 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	flex.AddItem(gopherBox, 13, 0, false)
 	flex.AddItem(sysInfoBox, 7, 0, false)
-	flex.AddItem(metricsBox, 0, 1, true)
+
+	// Create horizontal flex for the two columns
+	metricsFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
+	metricsFlex.AddItem(metricsBoxLeft, 0, 1, true)
+	metricsFlex.AddItem(metricsBoxRight, 0, 1, false)
+
+	flex.AddItem(metricsFlex, 0, 1, true)
 	flex.AddItem(footerBox, 1, 0, false)
 
 	// Populate System Info once
 	go func() {
 		hostInfo, _ := host.Info()
 		cpuInfo, _ := cpu.Info()
-		ip := getLocalIP()
 
 		sysInfoText := fmt.Sprintf(
-			"[yellow]OS:[-] %s %s\n[yellow]Host:[-] %s\n[yellow]Kernel:[-] %s\n[yellow]Uptime:[-] %d mins\n[yellow]CPU:[-] %s (%d cores)\n[yellow]Local IP:[-] %s",
+			"[yellow]OS:[-] %s %s\n[yellow]Host:[-] %s\n[yellow]Kernel:[-] %s\n[yellow]CPU:[-] %s (%d cores)",
 			hostInfo.Platform, hostInfo.PlatformVersion,
 			hostInfo.Hostname,
 			hostInfo.KernelVersion,
-			hostInfo.Uptime/60,
 			cpuInfo[0].ModelName, len(cpuInfo),
-			ip,
 		)
 
 		app.QueueUpdateDraw(func() {
@@ -213,42 +204,78 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 			addPoint(&diskHistory, metric.DiskUsage)
 			addPoint(&netSentHistory, metric.NetSentMBps)
 			addPoint(&netRecvHistory, metric.NetRecvMBps)
+			addPoint(&diskReadHistory, metric.DiskReadMBps)
+			addPoint(&diskWriteHistory, metric.DiskWriteMBps)
 
 			cpuSpark := renderSparkline(normalizeHistory(cpuHistory))
 			memSpark := renderSparkline(normalizeHistory(memHistory))
 			diskSpark := renderSparkline(normalizeHistory(diskHistory))
 			sentSpark := renderSparkline(normalizeHistory(netSentHistory))
 			recvSpark := renderSparkline(normalizeHistory(netRecvHistory))
+			diskReadSpark := renderSparkline(normalizeHistory(diskReadHistory))
+			diskWriteSpark := renderSparkline(normalizeHistory(diskWriteHistory))
 
 			cpuTempStr := "N/A"
 			if metric.CPUTemp > 0 {
 				cpuTempStr = fmt.Sprintf("%.0f°C", metric.CPUTemp)
 			}
 
-			text := fmt.Sprintf(
+			// Left box content - Main system metrics
+			leftText := fmt.Sprintf(
 				"%s\n[green]%s[-]\n%s\n[green]%s[-]\n%s\n[green]%s[-]\n\n"+
-					"[cyan]--------------------------------[-]\n[yellow]Network Stats[-]\n[cyan]--------------------------------[-]\n"+
-					"[green]Sent MBps:[-] %.2f MB/s\n[green]%s[-]\n"+
-					"[blue]Recv MBps:[-] %.2f MB/s\n[blue]%s[-]\n\n"+
-					"[cyan]--------------------------------[-]\n[yellow]System Stats[-]\n[cyan]--------------------------------[-]\n"+
+					"[cyan]================================[-]\n[yellow]System Stats[-]\n[cyan]================================[-]\n"+
 					"[yellow]CPU Temp:[-] %s\n"+
-					"[yellow]Battery:[-] %.2f%% (%s)",
+					"[yellow]Battery:[-] %.2f%% (%s)\n"+
+					"[yellow]Uptime:[-] %dd %dh %dm\n"+
+					"[yellow]Memory Total:[-] %.1f GB\n"+
+					"[yellow]Memory Available:[-] %.1f GB\n"+
+					"[yellow]Memory Cached:[-] %.1f GB",
 				renderBar("CPU", metric.CPUUsage, 20),
 				cpuSpark,
 				renderBar("Memory", metric.MemoryUsage, 20),
 				memSpark,
 				renderBar("Disk", metric.DiskUsage, 20),
 				diskSpark,
+				cpuTempStr,
+				metric.BatteryPercent, metric.BatteryState,
+				metric.UptimeDays, metric.UptimeHours, metric.UptimeMinutes,
+				float64(metric.MemoryTotal)/1024/1024/1024,
+				float64(metric.MemoryAvailable)/1024/1024/1024,
+				float64(metric.MemoryCached)/1024/1024/1024,
+			)
+
+			// Add GPU information if available
+			if len(metric.GPUs) > 0 {
+				gpuSection := "\n\n[cyan]================================[-]\n[yellow]GPU Stats[-]\n[cyan]================================[-]\n"
+				for i, gpu := range metric.GPUs {
+					if i > 0 {
+						gpuSection += "\n"
+					}
+					gpuSection += fmt.Sprintf("[yellow]%s:[-] %.0f°C", gpu.Name, gpu.Temperature)
+				}
+				leftText += gpuSection
+			}
+
+			// Right box content - Network and I/O
+			rightText := fmt.Sprintf(
+				"[cyan]================================[-]\n[yellow]Network Stats[-]\n[cyan]================================[-]\n"+
+					"[green]Sent MBps:[-] %.2f MB/s\n[green]%s[-]\n"+
+					"[blue]Recv MBps:[-] %.2f MB/s\n[blue]%s[-]\n\n"+
+					"[cyan]================================[-]\n[yellow]Disk I/O[-]\n[cyan]================================[-]\n"+
+					"[yellow]Read:[-] %.2f MB/s\n[green]%s[-]\n[yellow]Write:[-] %.2f MB/s\n[green]%s[-]",
 				metric.NetSentMBps,
 				sentSpark,
 				metric.NetRecvMBps,
 				recvSpark,
-				cpuTempStr,
-				metric.BatteryPercent, metric.BatteryState,
+				metric.DiskReadMBps, diskReadSpark,
+				metric.DiskWriteMBps, diskWriteSpark,
 			)
 
 			app.QueueUpdateDraw(func() {
-				metricsBox.SetText(text)
+				metricsBoxLeft.SetTextAlign(tview.AlignLeft)
+				metricsBoxRight.SetTextAlign(tview.AlignLeft)
+				metricsBoxLeft.SetText(leftText)
+				metricsBoxRight.SetText(rightText)
 			})
 		}
 	}()
@@ -264,7 +291,7 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 		return event
 	})
 
-	if err := app.SetRoot(flex, true).SetFocus(metricsBox).Run(); err != nil {
+	if err := app.SetRoot(flex, true).SetFocus(metricsBoxLeft).Run(); err != nil {
 		panic(err)
 	}
 }
