@@ -20,7 +20,7 @@ A lightweight resource monitor dashboard written in Go using TUI.
 ## Usage:
 1. Install package globally
 ```
-go install github.com/krisfur/go-resource-monitor@v0.1.3
+go install github.com/krisfur/go-resource-monitor@latest
 ```
 2. Run it
 ```
