@@ -215,18 +215,38 @@ func CollectMetrics(metricsChan chan<- Metrics, quitChan <-chan struct{}) {
 			}
 
 			if !nvidiaDetected {
-				// Try to get NVIDIA GPU temperature via nvidia-smi
-				cmd := exec.Command("nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits")
-				if output, err := cmd.Output(); err == nil {
+				// Try to get NVIDIA GPU temperature and utilization via nvidia-smi
+				tempCmd := exec.Command("nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits")
+				utilCmd := exec.Command("nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits")
+
+				var temp, util float64
+				if output, err := tempCmd.Output(); err == nil {
 					if tempStr := strings.TrimSpace(string(output)); tempStr != "" {
-						if temp, err := strconv.ParseFloat(tempStr, 64); err == nil {
-							gpus = append(gpus, GPUInfo{
-								Name:        "NVIDIA GPU",
-								MemoryUsed:  0,
-								MemoryTotal: 0,
-								Temperature: temp,
-								Utilization: 0,
-							})
+						temp, _ = strconv.ParseFloat(tempStr, 64)
+					}
+				}
+				if output, err := utilCmd.Output(); err == nil {
+					if utilStr := strings.TrimSpace(string(output)); utilStr != "" {
+						util, _ = strconv.ParseFloat(strings.TrimRight(utilStr, " %"), 64)
+					}
+				}
+
+				if temp > 0 || util > 0 {
+					gpus = append(gpus, GPUInfo{
+						Name:        "NVIDIA GPU",
+						Temperature: temp,
+						Utilization: util,
+					})
+				}
+			}
+
+			// AMD GPU Utilization
+			for i, gpu := range gpus {
+				if strings.Contains(strings.ToLower(gpu.Name), "amd") {
+					// Try to read utilization from sysfs
+					if utilData, err := exec.Command("cat", "/sys/class/drm/card0/device/gpu_busy_percent").Output(); err == nil {
+						if utilStr := strings.TrimSpace(string(utilData)); utilStr != "" {
+							gpus[i].Utilization, _ = strconv.ParseFloat(utilStr, 64)
 						}
 					}
 				}

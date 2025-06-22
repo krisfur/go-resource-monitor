@@ -26,8 +26,13 @@ var (
 	netRecvHistory   []float64
 	diskReadHistory  []float64
 	diskWriteHistory []float64
+	gpuUtilHistories map[string][]float64
 	mu               sync.Mutex
 )
+
+func init() {
+	gpuUtilHistories = make(map[string][]float64)
+}
 
 var gopherFrames = [][]string{
 	{
@@ -152,7 +157,7 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 	metricsBoxRight := tview.NewTextView()
 	metricsBoxRight.SetDynamicColors(true)
 	metricsBoxRight.SetBorder(true)
-	metricsBoxRight.SetTitle("Network & I/O")
+	metricsBoxRight.SetTitle("Network, I/O & Memory")
 	metricsBoxRight.SetChangedFunc(func() {
 		app.Draw()
 	})
@@ -207,6 +212,16 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 			addPoint(&diskReadHistory, metric.DiskReadMBps)
 			addPoint(&diskWriteHistory, metric.DiskWriteMBps)
 
+			// Update GPU utilization histories
+			for _, gpu := range metric.GPUs {
+				history, ok := gpuUtilHistories[gpu.Name]
+				if !ok {
+					history = make([]float64, 0, sparklinePoints)
+				}
+				addPoint(&history, gpu.Utilization)
+				gpuUtilHistories[gpu.Name] = history
+			}
+
 			cpuSpark := renderSparkline(normalizeHistory(cpuHistory))
 			memSpark := renderSparkline(normalizeHistory(memHistory))
 			diskSpark := renderSparkline(normalizeHistory(diskHistory))
@@ -222,26 +237,18 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 
 			// Left box content - Main system metrics
 			leftText := fmt.Sprintf(
-				"%s\n[green]%s[-]\n%s\n[green]%s[-]\n%s\n[green]%s[-]\n\n"+
+				"%s\n[green]%s[-]\n%s\n[green]%s[-]\n\n"+
 					"[cyan]================================[-]\n[yellow]System Stats[-]\n[cyan]================================[-]\n"+
 					"[yellow]CPU Temp:[-] %s\n"+
 					"[yellow]Battery:[-] %.2f%% (%s)\n"+
-					"[yellow]Uptime:[-] %dd %dh %dm\n"+
-					"[yellow]Memory Total:[-] %.1f GB\n"+
-					"[yellow]Memory Available:[-] %.1f GB\n"+
-					"[yellow]Memory Cached:[-] %.1f GB",
+					"[yellow]Uptime:[-] %dd %dh %dm",
 				renderBar("CPU", metric.CPUUsage, 20),
 				cpuSpark,
-				renderBar("Memory", metric.MemoryUsage, 20),
-				memSpark,
 				renderBar("Disk", metric.DiskUsage, 20),
 				diskSpark,
 				cpuTempStr,
 				metric.BatteryPercent, metric.BatteryState,
 				metric.UptimeDays, metric.UptimeHours, metric.UptimeMinutes,
-				float64(metric.MemoryTotal)/1024/1024/1024,
-				float64(metric.MemoryAvailable)/1024/1024/1024,
-				float64(metric.MemoryCached)/1024/1024/1024,
 			)
 
 			// Add GPU information if available
@@ -251,18 +258,34 @@ func StartUI(metricsChan <-chan metrics.Metrics, quitChan chan<- struct{}) {
 					if i > 0 {
 						gpuSection += "\n"
 					}
-					gpuSection += fmt.Sprintf("[yellow]%s:[-] %.0f°C", gpu.Name, gpu.Temperature)
+					gpuUtilSparkline := renderSparkline(normalizeHistory(gpuUtilHistories[gpu.Name]))
+					gpuSection += fmt.Sprintf(
+						"%s\n[green]%s[-]\n[yellow]Temp:[-] %.0f°C",
+						renderBar(gpu.Name, gpu.Utilization, 20),
+						gpuUtilSparkline,
+						gpu.Temperature,
+					)
 				}
 				leftText += gpuSection
 			}
 
 			// Right box content - Network and I/O
 			rightText := fmt.Sprintf(
-				"[cyan]================================[-]\n[yellow]Network Stats[-]\n[cyan]================================[-]\n"+
+				"%s\n[green]%s[-]\n\n"+
+					"[cyan]================================[-]\n[yellow]Memory Stats[-]\n[cyan]================================[-]\n"+
+					"[yellow]Memory Total:[-] %.1f GB\n"+
+					"[yellow]Memory Available:[-] %.1f GB\n"+
+					"[yellow]Memory Cached:[-] %.1f GB\n\n"+
+					"[cyan]================================[-]\n[yellow]Network Stats[-]\n[cyan]================================[-]\n"+
 					"[green]Sent MBps:[-] %.2f MB/s\n[green]%s[-]\n"+
 					"[blue]Recv MBps:[-] %.2f MB/s\n[blue]%s[-]\n\n"+
 					"[cyan]================================[-]\n[yellow]Disk I/O[-]\n[cyan]================================[-]\n"+
 					"[yellow]Read:[-] %.2f MB/s\n[green]%s[-]\n[yellow]Write:[-] %.2f MB/s\n[green]%s[-]",
+				renderBar("Memory", metric.MemoryUsage, 20),
+				memSpark,
+				float64(metric.MemoryTotal)/1024/1024/1024,
+				float64(metric.MemoryAvailable)/1024/1024/1024,
+				float64(metric.MemoryCached)/1024/1024/1024,
 				metric.NetSentMBps,
 				sentSpark,
 				metric.NetRecvMBps,

@@ -19,3 +19,6 @@
 # OS junk
 .DS_Store
 Thumbs.db
+
+# other
+*.webm

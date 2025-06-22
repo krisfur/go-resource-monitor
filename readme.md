@@ -6,10 +6,13 @@ A lightweight resource monitor dashboard written in Go using TUI.
 
 ## Features:
 - 🐹 Animated ASCII Gopher mascot
-- 📊 Real-time CPU, Memory, Disk usage sparklines
+- 📊 Real-time CPU, Memory, Disk usage with sparklines
+- 🌡️ CPU & multi-GPU temperature and utilization monitoring
+- 💾 Disk I/O monitoring with sparklines
 - 🌐 Network throughput stats
 - 🔋 Battery status
-- 🎨 Clean, colorful UI
+- 🖥️ Two-column responsive layout
+- 🎨 Clean, colorful TUI
 
 ## Looks
 ![screencast](screencast.gif)
@@ -39,10 +42,6 @@ export PATH="$HOME/go/bin:$PATH"
 
 
 Dependencies are managed via Go modules.
-
-## Notes:
-- CPU temperature may be unavailable depending on your system.
-- Root privileges may be required for certain metrics on some systems.
 
 ## License:
 MIT
