@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -50,34 +49,6 @@ type GPUInfo struct {
 	MemoryTotal uint64
 	Temperature float64
 	Utilization float64
-}
-
-// DebugSensors prints all available temperature sensors (call this once at startup)
-func DebugSensors() {
-	hostInfo, _ := host.Info()
-	fmt.Printf("Platform: %s %s\n", hostInfo.Platform, hostInfo.PlatformVersion)
-
-	temps, err := host.SensorsTemperatures()
-	if err != nil {
-		fmt.Printf("Error getting sensors: %v\n", err)
-		return
-	}
-
-	fmt.Printf("Available temperature sensors (%d found):\n", len(temps))
-	for i, t := range temps {
-		fmt.Printf("  %d: Key='%s', Temp=%.1f°C\n", i, t.SensorKey, t.Temperature)
-	}
-
-	// Platform-specific guidance
-	if hostInfo.Platform == "darwin" {
-		fmt.Printf("\n[macOS] Note: CPU temperature may require additional tools like:\n")
-		fmt.Printf("  - osx-cpu-temp: brew install osx-cpu-temp\n")
-		fmt.Printf("  - iStats: gem install iStats\n")
-		fmt.Printf("  - Or use the built-in thermal zones shown above\n")
-	} else if hostInfo.Platform == "linux" {
-		fmt.Printf("\n[Linux] Temperature sensors should work with lm-sensors.\n")
-		fmt.Printf("  If no sensors found, try: sudo sensors-detect\n")
-	}
 }
 
 func CollectMetrics(metricsChan chan<- Metrics, quitChan <-chan struct{}) {
@@ -132,30 +103,8 @@ func CollectMetrics(metricsChan chan<- Metrics, quitChan <-chan struct{}) {
 				prevDiskWrite = totalWrite
 			}
 
-			// CPU Temperature
-			cpuTemp := 0.0
-			temps, _ := host.SensorsTemperatures()
-			for _, t := range temps {
-				// Try multiple common CPU temperature sensor patterns
-				sensorKey := strings.ToLower(t.SensorKey)
-				if strings.Contains(sensorKey, "package id 0") ||
-					strings.Contains(sensorKey, "cpu") ||
-					strings.Contains(sensorKey, "tctl") || // AMD CPU temperature
-					strings.Contains(sensorKey, "core") ||
-					strings.Contains(sensorKey, "die") ||
-					strings.Contains(sensorKey, "thermal") || // macOS thermal zones
-					strings.Contains(sensorKey, "acpi") || // ACPI thermal zones
-					strings.Contains(sensorKey, "temp") { // Generic temperature sensors
-					cpuTemp = t.Temperature
-					break
-				}
-			}
-
-			// If no CPU-specific sensor found, try to use the first available temperature sensor
-			// (often ACPI thermal zones can be a reasonable fallback)
-			if cpuTemp == 0.0 && len(temps) > 0 {
-				cpuTemp = temps[0].Temperature
-			}
+			// CPU Temperature - now using platform-specific implementation
+			cpuTemp := GetCPUTemperature()
 
 			// Battery
 			batteryPercent := 0.0
@@ -176,6 +125,9 @@ func CollectMetrics(metricsChan chan<- Metrics, quitChan <-chan struct{}) {
 
 			// GPU Information - Detect GPUs from temperature sensors and system info
 			var gpus []GPUInfo
+
+			// Get temperature sensors for GPU detection
+			temps, _ := host.SensorsTemperatures()
 
 			// First, detect GPUs from temperature sensors
 			for _, t := range temps {
