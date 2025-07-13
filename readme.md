@@ -1,47 +1,63 @@
-# 📈 GO Resource Monitor
+# 📈 Go Resource Monitor
 
-![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)    [![Go](https://img.shields.io/badge/Go-1.24.4-blue)](https://go.dev/)
+A real-time system resource monitor with a terminal-based dashboard, written in Go.
 
-A lightweight resource monitor dashboard written in Go using TUI.
+## Features
 
-## Features:
-- 🐹 Animated ASCII Gopher mascot
-- 📊 Real-time CPU, Memory, Disk usage with sparklines
-- 🌡️ CPU & multi-GPU temperature and utilization monitoring
-- 💾 Disk I/O monitoring with sparklines
-- 🌐 Network throughput stats
-- 🔋 Battery status
-- 🖥️ Two-column responsive layout
-- 🎨 Clean, colorful TUI
+- **CPU Usage**: Real-time CPU utilization percentage
+- **CPU Temperature**: Cross-platform CPU temperature monitoring
+  - **macOS**: Uses IORegistry for reliable temperature reading on Apple Silicon and Intel Macs
+  - **Linux**: Uses lm-sensors via gopsutil for temperature monitoring
+  - **Other platforms**: Generic sensor support via gopsutil
+- **Memory Usage**: RAM utilization and detailed memory statistics
+- **Disk Usage**: Storage utilization and I/O metrics
+- **Network Activity**: Real-time network traffic monitoring
+- **Battery Status**: Battery percentage and charging state (laptops)
+- **GPU Information**: GPU utilization and temperature (when available)
+- **System Uptime**: Days, hours, and minutes since boot
 
-## Looks
-![screencast](screencast.gif)
+## Installation
 
-## Usage:
-1. Install package globally
-```
-go install github.com/krisfur/go-resource-monitor@latest
-```
-2. Run it
-```
-go-resource-monitor
-```
-3. Press Q to quit.
-
-
-If you need to add go modules to path do:
 ```bash
-export PATH="$HOME/go/bin:$PATH"
+# Clone the repository
+git clone https://github.com/krisfur/go-resource-monitor.git
+cd go-resource-monitor
+
+# Install dependencies
+go mod tidy
+
+# Build the application
+go build -o go-resource-monitor
+
+# Run the monitor
+./go-resource-monitor
 ```
 
-## Dependencies:
-- tview (https://github.com/rivo/tview)
-- tcell (https://github.com/gdamore/tcell)
-- gopsutil (https://github.com/shirou/gopsutil)
-- distatus/battery (https://github.com/distatus/battery) for battery info
+## Usage
 
+```bash
+./go-resource-monitor
+```
 
-Dependencies are managed via Go modules.
+## Platform-Specific Notes
 
-## License:
-MIT
+### macOS
+- Temperature monitoring uses multiple fallback methods for maximum compatibility
+- Works on both Intel and Apple Silicon Macs
+- No external dependencies required for basic temperature reading
+
+### Linux
+- Temperature monitoring requires lm-sensors
+- Install sensors: `sudo apt-get install lm-sensors` (Ubuntu/Debian)
+- Configure sensors: `sudo sensors-detect`
+
+## Dependencies
+
+- [gopsutil](https://github.com/shirou/gopsutil) - System and process utilities
+- [battery](https://github.com/distatus/battery) - Battery information
+- [go-m1cpu](https://github.com/shoenig/go-m1cpu) - Apple Silicon detection
+- [tview](https://github.com/rivo/tview) - Terminal UI framework
+
+## License
+
+MIT License
