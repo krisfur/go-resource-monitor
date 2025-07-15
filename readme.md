@@ -19,6 +19,12 @@ A real-time system resource monitor with a terminal-based dashboard, written in 
 ## Installation
 
 ```bash
+go install github.com/krisfur/go-resource-monitor@latest 
+```
+
+or from source:
+
+```bash
 # Clone the repository
 git clone https://github.com/krisfur/go-resource-monitor.git
 cd go-resource-monitor
