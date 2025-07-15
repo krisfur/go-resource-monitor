@@ -42,7 +42,7 @@ go build -o go-resource-monitor
 ## Usage
 
 ```bash
-./go-resource-monitor
+go-resource-monitor
 ```
 
 ## Platform-Specific Notes
