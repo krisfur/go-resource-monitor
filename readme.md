@@ -2,6 +2,8 @@
 
 A real-time system resource monitor with a terminal-based dashboard, written in Go.
 
+![screencast](screencast.gif)
+
 ## Features
 
 - **CPU Usage**: Real-time CPU utilization percentage
